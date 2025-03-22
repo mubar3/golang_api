@@ -25,3 +25,16 @@ func Isnotnull(pass any) bool {
 	}
 	return true
 }
+
+func NullValidation(data interface{}) (status bool, message string) {
+	// Periksa apakah data adalah map
+	if items, ok := data.(map[string]interface{}); ok {
+		for key, value := range items {
+			if !Isnotnull(value) {
+				return false, key + " kosong"
+			}
+		}
+		return true, ""
+	}
+	return false, "data tidak valid"
+}

@@ -22,7 +22,7 @@ type User_mobile struct {
 }
 
 // Fungsi Login
-func Login(client *mongo.Client, c *gin.Context) {
+func Login(connection *mongo.Database, c *gin.Context) {
 	// Ambil input username dan password dari form-data
 	username := c.PostForm("username")
 	password := c.PostForm("password")
@@ -37,7 +37,7 @@ func Login(client *mongo.Client, c *gin.Context) {
 	}
 
 	// cek db
-	collection := client.Database("local").Collection("user_mobile")
+	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
 	filter := bson.M{"username": username}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
@@ -82,8 +82,22 @@ func Login(client *mongo.Client, c *gin.Context) {
 	})
 }
 
+func ChangePassword(connection *mongo.Database, c *gin.Context) {
+	status, eror := utils.NullValidation(map[string]interface{}{
+		"session":  c.PostForm("session"),
+		"password": c.PostForm("password"),
+	})
+	if !status {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  "error",
+			"message": eror,
+		})
+		return
+	}
+}
+
 // Fungsi untuk menyisipkan user ke koleksi MongoDB
-func InsertUser(client *mongo.Client, c *gin.Context) {
+func InsertUser(connection *mongo.Database, c *gin.Context) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 	keyz := "265"
@@ -101,7 +115,7 @@ func InsertUser(client *mongo.Client, c *gin.Context) {
 	hashedPassword := utils.HashPassword(password, keyz)
 
 	// Dapatkan koleksi user_mobile
-	collection := client.Database("local").Collection("user_mobile")
+	collection := connection.Collection("user_mobile")
 
 	// Data user yang akan disimpan
 	user := bson.M{
