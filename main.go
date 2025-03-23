@@ -54,21 +54,29 @@ func connectToMongoDB() (*mongo.Client, error) {
 }
 
 func main() {
-	// Memuat file .env
-	err := godotenv.Load()
+
+	// Inisialisasi logger
+	err := utils.InitLogger("./logs")
 	if err != nil {
-		logrus.Fatal(err.Error())
+		log.Fatalf("Gagal menginisialisasi logger: %v", err)
+	}
+	defer utils.Logger.Close()
+
+	// Memuat file .env
+	err = godotenv.Load()
+	if err != nil {
+		utils.Logger.LogMessage("ERROR", err.Error())
+		// logrus.Fatal(err.Error())
 		log.Fatal("Error loading .env file")
 	}
 
+	// inisiasi mongodb
 	client, err := connectToMongoDB()
 	if err != nil {
-		logrus.Fatal(err.Error())
+		utils.Logger.LogMessage("ERROR", err.Error())
+		// logrus.Fatal(err.Error())
 		log.Fatalf("Error initializing MongoDB connection: %v", err)
 	}
-
-	// Inisialisasi logger
-	utils.InitLogger()
 
 	// Jalankan cronjobs menggunakan goroutine
 	go utils.StartCronJobs()
@@ -82,7 +90,8 @@ func main() {
 		port = "8080" // Default port jika tidak ada di .env
 	}
 	if err := router.Run(":" + port); err != nil {
-		logrus.Fatal(err.Error())
+		utils.Logger.LogMessage("ERROR", err.Error())
+		// logrus.Fatal(err.Error())
 		log.Fatalf("Failed to start the server: %v", err)
 	}
 }

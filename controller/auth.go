@@ -18,7 +18,7 @@ type User_mobile struct {
 	Username   string    `bson:"username"`
 	Password   string    `bson:"password"` // Ini harus berupa hash
 	Keyz       string    `bson:"keyz"`
-	Session    *string   `bson:"keyz"` // Jika tidak ada, akan menjadi nil
+	Session    *string   `bson:"session"` // Jika tidak ada, akan menjadi nil
 	Created_at time.Time `bson:"created_time"`
 }
 
@@ -29,7 +29,7 @@ func Login(connection *mongo.Database, c *gin.Context) {
 		"password": c.PostForm("password"),
 	})
 	if !status {
-		utils.Response(c, http.StatusInternalServerError, eror, nil)
+		utils.Response(c, http.StatusBadRequest, eror, nil)
 		return
 	}
 
@@ -42,16 +42,19 @@ func Login(connection *mongo.Database, c *gin.Context) {
 	filter := bson.M{"username": username}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
-		utils.Response(c, http.StatusInternalServerError, "Username Salah", nil)
+		utils.Response(c, http.StatusBadRequest, "Username Salah", nil)
 		return
 	}
 
 	// Hash password
 	password = utils.HashPassword(password, user_mobile.Keyz)
 	if password != user_mobile.Password {
-		utils.Response(c, http.StatusInternalServerError, "Password Salah", user_mobile.Id)
+		utils.Response(c, http.StatusBadRequest, "Password Salah", user_mobile.Id)
 		return
 	}
+
+	// logs
+	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint")
 
 	session_id := uuid.NewString()
 	update := bson.M{
@@ -78,7 +81,7 @@ func ChangePassword(connection *mongo.Database, c *gin.Context) {
 		"password": c.PostForm("password"),
 	})
 	if !status {
-		utils.Response(c, http.StatusInternalServerError, eror, nil)
+		utils.Response(c, http.StatusBadRequest, eror, nil)
 		return
 	}
 }
@@ -94,7 +97,7 @@ func InsertUser(connection *mongo.Database, c *gin.Context) {
 		"password": c.PostForm("password"),
 	})
 	if !status {
-		utils.Response(c, http.StatusInternalServerError, eror, nil)
+		utils.Response(c, http.StatusBadRequest, eror, nil)
 		return
 	}
 
