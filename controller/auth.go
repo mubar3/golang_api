@@ -9,32 +9,32 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type User_mobile struct {
+	Id         string    `bson:"_id"`
 	Username   string    `bson:"username"`
-	Password   string    `bson:"password"`     // Ini harus berupa hash
-	Keyz       string    `bson:"keyz"`         // Ini harus berupa hash
-	Created_at time.Time `bson:"created_time"` // Ini harus berupa hash
+	Password   string    `bson:"password"` // Ini harus berupa hash
+	Keyz       string    `bson:"keyz"`
+	Session    *string   `bson:"keyz"` // Jika tidak ada, akan menjadi nil
+	Created_at time.Time `bson:"created_time"`
 }
 
 // Fungsi Login
 func Login(connection *mongo.Database, c *gin.Context) {
-	// Ambil input username dan password dari form-data
-	username := c.PostForm("username")
-	password := c.PostForm("password")
-
-	// cek inputan
-	if !utils.Isnotnull(username) || !utils.Isnotnull(password) {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Username/password kosong",
-		})
+	status, eror := utils.NullValidation(map[string]interface{}{
+		"username": c.PostForm("username"),
+		"password": c.PostForm("password"),
+	})
+	if !status {
+		utils.Response(c, http.StatusInternalServerError, eror, nil)
 		return
 	}
+
+	username := c.PostForm("username")
+	password := c.PostForm("password")
 
 	// cek db
 	collection := connection.Collection("user_mobile")
@@ -42,20 +42,14 @@ func Login(connection *mongo.Database, c *gin.Context) {
 	filter := bson.M{"username": username}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Username Salah",
-		})
+		utils.Response(c, http.StatusInternalServerError, "Username Salah", nil)
 		return
 	}
 
 	// Hash password
 	password = utils.HashPassword(password, user_mobile.Keyz)
 	if password != user_mobile.Password {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Password Salah",
-		})
+		utils.Response(c, http.StatusInternalServerError, "Password Salah", user_mobile.Id)
 		return
 	}
 
@@ -67,11 +61,7 @@ func Login(connection *mongo.Database, c *gin.Context) {
 	}
 	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		logrus.Fatal(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Server error",
-		})
+		utils.Response(c, http.StatusInternalServerError, "Proses unggah data gagal. Silakan coba lagi nanti.", user_mobile.Id)
 		return
 	}
 
@@ -88,10 +78,7 @@ func ChangePassword(connection *mongo.Database, c *gin.Context) {
 		"password": c.PostForm("password"),
 	})
 	if !status {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": eror,
-		})
+		utils.Response(c, http.StatusInternalServerError, eror, nil)
 		return
 	}
 }
@@ -102,12 +89,12 @@ func InsertUser(connection *mongo.Database, c *gin.Context) {
 	password := c.PostForm("password")
 	keyz := "265"
 
-	// cek inputan
-	if !utils.Isnotnull(username) || !utils.Isnotnull(password) {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Username/password kosong",
-		})
+	status, eror := utils.NullValidation(map[string]interface{}{
+		"username": c.PostForm("username"),
+		"password": c.PostForm("password"),
+	})
+	if !status {
+		utils.Response(c, http.StatusInternalServerError, eror, nil)
 		return
 	}
 
@@ -131,11 +118,7 @@ func InsertUser(connection *mongo.Database, c *gin.Context) {
 
 	_, err := collection.InsertOne(ctx, user)
 	if err != nil {
-		logrus.Warn(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "error",
-			"message": "Failed to insert user: " + err.Error(),
-		})
+		utils.Response(c, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
 
