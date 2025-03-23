@@ -18,7 +18,7 @@ type User_mobile struct {
 	Username   string    `bson:"username"`
 	Password   string    `bson:"password"` // Ini harus berupa hash
 	Keyz       string    `bson:"keyz"`
-	Session    *string   `bson:"session"` // Jika tidak ada, akan menjadi nil
+	Session    *string   `bson:"session_id"` // Jika tidak ada, akan menjadi nil
 	Created_at time.Time `bson:"created_time"`
 }
 
@@ -54,7 +54,7 @@ func Login(connection *mongo.Database, c *gin.Context) {
 	}
 
 	// logs
-	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint")
+	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint /login")
 
 	session_id := uuid.NewString()
 	update := bson.M{
@@ -70,20 +70,55 @@ func Login(connection *mongo.Database, c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
-		"message": "Login successfully!",
+		"message": "Login berhasil!",
 		"session": session_id,
 	})
 }
 
 func ChangePassword(connection *mongo.Database, c *gin.Context) {
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session":  c.PostForm("session"),
+		"session":  c.PostForm("session_id"),
 		"password": c.PostForm("password"),
 	})
 	if !status {
 		utils.Response(c, http.StatusBadRequest, eror, nil)
 		return
 	}
+
+	// cek db
+	collection := connection.Collection("user_mobile")
+	var user_mobile User_mobile
+	filter := bson.M{"session_id": c.PostForm("session_id")}
+	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
+	if err != nil {
+		utils.Response(c, http.StatusBadRequest, "Session tidak tersedia", nil)
+		return
+	}
+
+	// Hash password
+	password := utils.HashPassword(c.PostForm("password"), user_mobile.Keyz)
+	if password == user_mobile.Password {
+		utils.Response(c, http.StatusBadRequest, "Password tidak boleh sama dengan password yang lama", user_mobile.Id)
+		return
+	}
+	// logs
+	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint /change-password")
+
+	update := bson.M{
+		"$set": bson.M{
+			"password": password, // Nilai session ID baru
+		},
+	}
+	_, err = collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		utils.Response(c, http.StatusInternalServerError, "Proses unggah data gagal. Silakan coba lagi nanti.", user_mobile.Id)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Ubah password berhasil!",
+	})
 }
 
 // Fungsi untuk menyisipkan user ke koleksi MongoDB
