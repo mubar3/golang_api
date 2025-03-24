@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"net/http"
+	"os"
 	"time"
 
 	"golang_api/utils"
@@ -19,6 +20,8 @@ type User_mobile struct {
 	Password   string    `bson:"password"` // Ini harus berupa hash
 	Keyz       string    `bson:"keyz"`
 	Session    *string   `bson:"session_id"` // Jika tidak ada, akan menjadi nil
+	Foto       *string   `bson:"foto"`       // Jika tidak ada, akan menjadi nil
+	Jabatan    *string   `bson:"jabatan"`    // Jika tidak ada, akan menjadi nil
 	Created_at time.Time `bson:"created_time"`
 }
 
@@ -163,5 +166,42 @@ func InsertUser(connection *mongo.Database, c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "User inserted successfully!",
+	})
+}
+
+func GetData(connection *mongo.Database, c *gin.Context) {
+	status, eror := utils.NullValidation(map[string]interface{}{
+		"session": c.PostForm("session_id"),
+	})
+	if !status {
+		utils.Response(c, http.StatusBadRequest, eror, nil)
+		return
+	}
+
+	// cek db
+	collection := connection.Collection("user_mobile")
+	var user_mobile User_mobile
+	filter := bson.M{"session_id": c.PostForm("session_id")}
+	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
+	if err != nil {
+		utils.Response(c, http.StatusBadRequest, "Session tidak tersedia", nil)
+		return
+	}
+
+	// logs
+	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint /get-data")
+
+	foto := os.Getenv("URL") + "/static/profil/blank.png"
+	if user_mobile.Foto != nil {
+		foto = os.Getenv("URL") + "/static/profil/" + *user_mobile.Foto // Dereferensi pointer
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": gin.H{ // Gunakan gin.H untuk struktur key-value
+			"username": user_mobile.Username,
+			"jabatan":  user_mobile.Jabatan,
+			"foto":     foto,
+		},
 	})
 }

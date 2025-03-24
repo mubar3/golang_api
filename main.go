@@ -97,6 +97,9 @@ func main() {
 	// Setup routing
 	router := routes.SetupRoutes(client)
 
+	// setup asset
+	router.Static("/static", "./asset")
+
 	// Jalankan API di port yang ditentukan
 	port := os.Getenv("PORT")
 	if port == "" {

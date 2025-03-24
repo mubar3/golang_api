@@ -21,6 +21,9 @@ func SetupRoutes(client *mongo.Client) *gin.Engine {
 	router.POST("/change-password", func(c *gin.Context) {
 		controller.ChangePassword(connection, c)
 	})
+	router.POST("/get-data", func(c *gin.Context) {
+		controller.GetData(connection, c)
+	})
 
 	return router
 }
