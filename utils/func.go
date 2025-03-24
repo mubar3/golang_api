@@ -2,10 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"golang_api/config"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
@@ -74,6 +76,16 @@ func Response(c *gin.Context, httpStatus int, message string, user any) {
 	}
 }
 
+func GenerateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	result := make([]byte, length)
+	for i := range result {
+		randomByte, _ := rand.Prime(rand.Reader, len(charset))
+		result[i] = charset[randomByte.Uint64()%uint64(len(charset))]
+	}
+	return string(result)
+}
+
 func RemoveBase64Prefix(base64Image string) string {
 	// Cek apakah string mengandung prefix "data:image/"
 	if idx := strings.Index(base64Image, ","); idx != -1 {
@@ -123,7 +135,7 @@ func DecodeAndCompressBase64Image(base64Image, folderPath string) (string, error
 	quality := 50
 
 	// Buat folder dengan struktur tahun/bulan
-	now := time.Now()
+	now := time.Now().In(config.Timezone)
 	year, month := now.Format("2006"), now.Format("01")
 	finalFolderPath := filepath.Join(folderPath, year, month)
 
@@ -133,7 +145,8 @@ func DecodeAndCompressBase64Image(base64Image, folderPath string) (string, error
 	}
 
 	// Buat nama file berdasarkan timestamp
-	fileName := fmt.Sprintf("%d.jpg", now.Unix())
+	// fileName := fmt.Sprintf("%d.jpg", now.Unix())
+	fileName := fmt.Sprintf("image_%s_%s.jpg", now.Format("20060102_150405"), GenerateRandomString(8))
 	fullPath := filepath.Join(finalFolderPath, fileName)
 
 	// Buat file output
