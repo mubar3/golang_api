@@ -24,6 +24,9 @@ func SetupRoutes(client *mongo.Client) *gin.Engine {
 	router.POST("/get-data", func(c *gin.Context) {
 		controller.GetData(connection, c)
 	})
+	router.POST("/upload-img", func(c *gin.Context) {
+		controller.UploadImg(connection, c)
+	})
 
 	return router
 }
