@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"golang_api/config"
 	"golang_api/routes"
 	"golang_api/utils"
 
@@ -53,12 +54,15 @@ func connectToMongoDB() (*mongo.Client, error) {
 	return client, nil
 }
 
+var Timezone *time.Location
+
 func main() {
 
 	// Inisialisasi logger
 	err := utils.InitLogger("./logs")
 	if err != nil {
 		log.Fatalf("Gagal menginisialisasi logger: %v", err)
+		return
 	}
 	defer utils.Logger.Close()
 
@@ -68,6 +72,14 @@ func main() {
 		utils.Logger.LogMessage("ERROR", err.Error())
 		// logrus.Fatal(err.Error())
 		log.Fatal("Error loading .env file")
+		return
+	}
+
+	// Set timezone menggunakan package config
+	err = config.InitTimezone(os.Getenv("TIMEZONE"))
+	if err != nil {
+		log.Fatalf("Failed to initialize timezone: %v", err)
+		return
 	}
 
 	// inisiasi mongodb
@@ -76,6 +88,7 @@ func main() {
 		utils.Logger.LogMessage("ERROR", err.Error())
 		// logrus.Fatal(err.Error())
 		log.Fatalf("Error initializing MongoDB connection: %v", err)
+		return
 	}
 
 	// Jalankan cronjobs menggunakan goroutine
@@ -93,5 +106,6 @@ func main() {
 		utils.Logger.LogMessage("ERROR", err.Error())
 		// logrus.Fatal(err.Error())
 		log.Fatalf("Failed to start the server: %v", err)
+		return
 	}
 }

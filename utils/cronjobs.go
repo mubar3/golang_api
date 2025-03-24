@@ -1,14 +1,15 @@
 package utils
 
 import (
+	"golang_api/config"
 	"log"
-	"time"
 
 	"github.com/go-co-op/gocron"
 )
 
 func StartCronJobs() {
-	scheduler := gocron.NewScheduler(time.UTC)
+	// currentTime := time.Now().In(config.Timezone)
+	scheduler := gocron.NewScheduler(config.Timezone)
 	scheduler.Every(1).Hour().Do(func() {
 		log.Println("Cron job executed")
 	})
