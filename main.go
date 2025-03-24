@@ -13,7 +13,6 @@ import (
 	"golang_api/utils"
 
 	"github.com/joho/godotenv"
-	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -49,7 +48,6 @@ func connectToMongoDB() (*mongo.Client, error) {
 
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		logrus.Fatal(err.Error())
 		return nil, fmt.Errorf("failed to connect to MongoDB: %v", err)
 	}
 	return client, nil
@@ -71,7 +69,6 @@ func main() {
 	err = godotenv.Load()
 	if err != nil {
 		utils.Logger.LogMessage("ERROR", err.Error())
-		// logrus.Fatal(err.Error())
 		log.Fatal("Error loading .env file")
 		return
 	}
@@ -87,7 +84,6 @@ func main() {
 	client, err := connectToMongoDB()
 	if err != nil {
 		utils.Logger.LogMessage("ERROR", err.Error())
-		// logrus.Fatal(err.Error())
 		log.Fatalf("Error initializing MongoDB connection: %v", err)
 		return
 	}
