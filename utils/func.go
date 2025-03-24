@@ -6,18 +6,18 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"golang_api/config"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 func HashPassword(pass string, key string) string {
@@ -54,26 +54,42 @@ func NullValidation(data interface{}) (status bool, message string) {
 	return false, "data tidak valid"
 }
 
-func Response(c *gin.Context, httpStatus int, message string, user any) {
+func Response(w http.ResponseWriter, httpStatus int, message string, user interface{}, additional map[string]interface{}) {
+	// Mengatur header respons
+	w.Header().Set("Content-Type", "application/json")
+
+	// Logika untuk mencatat pesan berdasarkan status
 	if Isnotnull(user) {
-		if httpStatus == 400 {
+		if httpStatus == http.StatusBadRequest {
 			Logger.WithField("user_mobile", user).LogMessage("WARNING", message)
+		} else if httpStatus == http.StatusOK {
+			Logger.WithField("user_mobile", user).LogMessage("SUCCESS", message)
 		} else {
 			Logger.WithField("user_mobile", user).LogMessage("ERROR", message)
 		}
-		// logrus.WithField("user_mobile", user).Warn(message)
 	}
-	if httpStatus == 200 {
-		c.JSON(httpStatus, gin.H{
-			"status":  "succes",
-			"message": message,
-		})
-	} else {
-		c.JSON(httpStatus, gin.H{
-			"status":  "error",
-			"message": message,
-		})
+
+	// Membuat objek respons
+	response := map[string]interface{}{
+		"status":  "error",
+		"message": message,
 	}
+
+	// Menambahkan key-value tambahan jika ada
+	if additional != nil {
+		for key, value := range additional {
+			response[key] = value
+		}
+	}
+
+	// Jika status adalah 200, ubah status menjadi sukses
+	if httpStatus == http.StatusOK {
+		response["status"] = "success"
+	}
+
+	// Mengatur status dan mengirimkan respons JSON
+	w.WriteHeader(httpStatus)
+	json.NewEncoder(w).Encode(response)
 }
 
 func GenerateRandomString(length int) string {

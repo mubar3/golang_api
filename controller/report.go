@@ -5,34 +5,33 @@ import (
 	"golang_api/utils"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func UploadImg(connection *mongo.Database, c *gin.Context) {
+func UploadImg(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session": c.PostForm("session_id"),
-		"foto":    c.PostForm("foto"),
+		"session": c.PostFormValue("session_id"),
+		"foto":    c.PostFormValue("foto"),
 	})
 	if !status {
-		utils.Response(c, http.StatusBadRequest, eror, nil)
+		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
 		return
 	}
 
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostForm("session_id")}
+	filter := bson.M{"session_id": c.PostFormValue("session_id")}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
-		utils.Response(c, http.StatusBadRequest, "Session tidak tersedia", nil)
+		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)
 		return
 	}
 
 	// cek foto base64
-	if !utils.IsBase64ImageValid(c.PostForm("foto")) {
-		utils.Response(c, http.StatusBadRequest, "Foto tidak valid", user_mobile.Id)
+	if !utils.IsBase64ImageValid(c.PostFormValue("foto")) {
+		utils.Response(w, http.StatusBadRequest, "Foto tidak valid", user_mobile.Id, nil)
 		return
 	}
 
@@ -40,15 +39,14 @@ func UploadImg(connection *mongo.Database, c *gin.Context) {
 	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint /upload-img")
 
 	// Dekode, kompres, dan simpan gambar
-	path, err := utils.DecodeAndCompressBase64Image(c.PostForm("foto"), "./asset")
+	path, err := utils.DecodeAndCompressBase64Image(c.PostFormValue("foto"), "./asset")
 	if err != nil {
-		utils.Response(c, http.StatusInternalServerError, err.Error(), user_mobile.Id)
+		utils.Response(w, http.StatusInternalServerError, err.Error(), user_mobile.Id, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":   "success",
-		"message":  "Upload berhasil!",
+	utils.Response(w, http.StatusOK, "Upload berhasil!", user_mobile.Id, map[string]interface{}{
 		"filename": path,
 	})
+	return
 }

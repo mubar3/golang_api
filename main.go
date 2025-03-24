@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -97,18 +98,12 @@ func main() {
 	// Setup routing
 	router := routes.SetupRoutes(client)
 
-	// setup asset
-	// router.Static("/static", "./asset")
+	// Menjalankan server
+	log.Printf("Server is running on port %s\n", os.Getenv("PORT"))
 
-	// Jalankan API di port yang ditentukan
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // Default port jika tidak ada di .env
-	}
-	if err := router.Run(":" + port); err != nil {
-		utils.Logger.LogMessage("ERROR", err.Error())
-		// logrus.Fatal(err.Error())
+	if err := http.ListenAndServe(":"+os.Getenv("PORT"), router); err != nil {
 		log.Fatalf("Failed to start the server: %v", err)
 		return
 	}
+
 }

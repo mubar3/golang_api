@@ -8,7 +8,6 @@ import (
 
 	"golang_api/utils"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -26,18 +25,18 @@ type User_mobile struct {
 }
 
 // Fungsi Login
-func Login(connection *mongo.Database, c *gin.Context) {
+func Login(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"username": c.PostForm("username"),
-		"password": c.PostForm("password"),
+		"username": c.PostFormValue("username"),
+		"password": c.PostFormValue("password"),
 	})
 	if !status {
-		utils.Response(c, http.StatusBadRequest, eror, nil)
+		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
 		return
 	}
 
-	username := c.PostForm("username")
-	password := c.PostForm("password")
+	username := c.PostFormValue("username")
+	password := c.PostFormValue("password")
 
 	// cek db
 	collection := connection.Collection("user_mobile")
@@ -45,14 +44,14 @@ func Login(connection *mongo.Database, c *gin.Context) {
 	filter := bson.M{"username": username}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
-		utils.Response(c, http.StatusBadRequest, "Username Salah", nil)
+		utils.Response(w, http.StatusBadRequest, "Username Salah", nil, nil)
 		return
 	}
 
 	// Hash password
 	password = utils.HashPassword(password, user_mobile.Keyz)
 	if password != user_mobile.Password {
-		utils.Response(c, http.StatusBadRequest, "Password Salah", user_mobile.Id)
+		utils.Response(w, http.StatusBadRequest, "Password Salah", user_mobile.Id, nil)
 		return
 	}
 
@@ -67,41 +66,40 @@ func Login(connection *mongo.Database, c *gin.Context) {
 	}
 	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		utils.Response(c, http.StatusInternalServerError, "Proses unggah data gagal. Silakan coba lagi nanti.", user_mobile.Id)
+		utils.Response(w, http.StatusInternalServerError, "Proses unggah data gagal. Silakan coba lagi nanti.", user_mobile.Id, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Login berhasil!",
+	utils.Response(w, http.StatusOK, "Login berhasil!", user_mobile.Id, map[string]interface{}{
 		"session": session_id,
 	})
+	return
 }
 
-func ChangePassword(connection *mongo.Database, c *gin.Context) {
+func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session":  c.PostForm("session_id"),
-		"password": c.PostForm("password"),
+		"session":  c.PostFormValue("session_id"),
+		"password": c.PostFormValue("password"),
 	})
 	if !status {
-		utils.Response(c, http.StatusBadRequest, eror, nil)
+		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
 		return
 	}
 
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostForm("session_id")}
+	filter := bson.M{"session_id": c.PostFormValue("session_id")}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
-		utils.Response(c, http.StatusBadRequest, "Session tidak tersedia", nil)
+		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)
 		return
 	}
 
 	// Hash password
-	password := utils.HashPassword(c.PostForm("password"), user_mobile.Keyz)
+	password := utils.HashPassword(c.PostFormValue("password"), user_mobile.Keyz)
 	if password == user_mobile.Password {
-		utils.Response(c, http.StatusBadRequest, "Password tidak boleh sama dengan password yang lama", user_mobile.Id)
+		utils.Response(w, http.StatusBadRequest, "Password tidak boleh sama dengan password yang lama", user_mobile.Id, nil)
 		return
 	}
 	// logs
@@ -114,28 +112,26 @@ func ChangePassword(connection *mongo.Database, c *gin.Context) {
 	}
 	_, err = collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
-		utils.Response(c, http.StatusInternalServerError, "Proses unggah data gagal. Silakan coba lagi nanti.", user_mobile.Id)
+		utils.Response(w, http.StatusInternalServerError, "Proses unggah data gagal. Silakan coba lagi nanti.", user_mobile.Id, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Ubah password berhasil!",
-	})
+	utils.Response(w, http.StatusOK, "Ubah password berhasil!", user_mobile.Id, nil)
+	return
 }
 
 // Fungsi untuk menyisipkan user ke koleksi MongoDB
-func InsertUser(connection *mongo.Database, c *gin.Context) {
-	username := c.PostForm("username")
-	password := c.PostForm("password")
+func InsertUser(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
+	username := c.PostFormValue("username")
+	password := c.PostFormValue("password")
 	keyz := "265"
 
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"username": c.PostForm("username"),
-		"password": c.PostForm("password"),
+		"username": c.PostFormValue("username"),
+		"password": c.PostFormValue("password"),
 	})
 	if !status {
-		utils.Response(c, http.StatusBadRequest, eror, nil)
+		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
 		return
 	}
 
@@ -159,32 +155,30 @@ func InsertUser(connection *mongo.Database, c *gin.Context) {
 
 	_, err := collection.InsertOne(ctx, user)
 	if err != nil {
-		utils.Response(c, http.StatusInternalServerError, err.Error(), nil)
+		utils.Response(w, http.StatusInternalServerError, err.Error(), nil, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "User inserted successfully!",
-	})
+	utils.Response(w, http.StatusOK, "User inserted successfully!", nil, nil)
+	return
 }
 
-func GetData(connection *mongo.Database, c *gin.Context) {
+func GetData(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session": c.PostForm("session_id"),
+		"session": c.PostFormValue("session_id"),
 	})
 	if !status {
-		utils.Response(c, http.StatusBadRequest, eror, nil)
+		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
 		return
 	}
 
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostForm("session_id")}
+	filter := bson.M{"session_id": c.PostFormValue("session_id")}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
-		utils.Response(c, http.StatusBadRequest, "Session tidak tersedia", nil)
+		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)
 		return
 	}
 
@@ -196,12 +190,12 @@ func GetData(connection *mongo.Database, c *gin.Context) {
 		foto = os.Getenv("URL") + "/static/profil/" + *user_mobile.Foto // Dereferensi pointer
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data": gin.H{ // Gunakan gin.H untuk struktur key-value
+	utils.Response(w, http.StatusOK, "Get data berhasil!", user_mobile.Id, map[string]interface{}{
+		"data": map[string]interface{}{
 			"username": user_mobile.Username,
 			"jabatan":  user_mobile.Jabatan,
 			"foto":     foto,
 		},
 	})
+	return
 }
