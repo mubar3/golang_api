@@ -56,18 +56,10 @@ var Timezone *time.Location
 
 func main() {
 
-	// Inisialisasi logger
-	err := utils.InitLogger("./logs")
-	if err != nil {
-		log.Fatalf("Gagal menginisialisasi logger: %v", err)
-		return
-	}
-	defer utils.Logger.Close()
-
 	// Memuat file .env
-	err = utils.LoadEnv(".env")
+	err := utils.LoadEnv(".env")
 	if err != nil {
-		utils.Logger.LogMessage("ERROR", err.Error())
+		// utils.Logger.LogMessage("ERROR", err.Error())
 		log.Fatal("Error loading .env file")
 		return
 	}
@@ -78,6 +70,14 @@ func main() {
 		log.Fatalf("Failed to initialize timezone: %v", err)
 		return
 	}
+
+	// Inisialisasi logger
+	err = utils.InitLogger("./logs")
+	if err != nil {
+		log.Fatalf("Gagal menginisialisasi logger: %v", err)
+		return
+	}
+	defer utils.Logger.Close()
 
 	// inisiasi mongodb
 	client, err := connectToMongoDB()

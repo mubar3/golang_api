@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"golang_api/config"
 	"log"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func (cl *CustomLogger) WithField(key string, value interface{}) *CustomLogger {
 
 // LogMessage menulis pesan log ke file
 func (cl *CustomLogger) LogMessage(level string, message string) {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	timestamp := time.Now().In(config.Timezone).Format("2006-01-02 15:04:05")
 	log.SetOutput(cl.file)
 
 	// Tambahkan field ke log
@@ -58,7 +59,7 @@ func (cl *CustomLogger) Close() error {
 // InitLogger menginisialisasi logger global
 func InitLogger(basePath string) error {
 	// Dapatkan waktu sekarang
-	now := time.Now()
+	now := time.Now().In(config.Timezone)
 
 	// Format nama folder dan file
 	year := now.Format("2006")
