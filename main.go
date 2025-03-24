@@ -12,7 +12,6 @@ import (
 	"golang_api/routes"
 	"golang_api/utils"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -66,7 +65,7 @@ func main() {
 	defer utils.Logger.Close()
 
 	// Memuat file .env
-	err = godotenv.Load()
+	err = utils.LoadEnv(".env")
 	if err != nil {
 		utils.Logger.LogMessage("ERROR", err.Error())
 		log.Fatal("Error loading .env file")
