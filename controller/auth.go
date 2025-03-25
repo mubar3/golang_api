@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"golang_api/config"
 	"golang_api/utils"
 
 	"github.com/google/uuid"
@@ -73,7 +74,6 @@ func Login(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
 	utils.Response(w, http.StatusOK, "Login berhasil!", user_mobile.Id, map[string]interface{}{
 		"session": session_id,
 	})
-	return
 }
 
 func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
@@ -117,7 +117,6 @@ func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.R
 	}
 
 	utils.Response(w, http.StatusOK, "Ubah password berhasil!", user_mobile.Id, nil)
-	return
 }
 
 // Fungsi untuk menyisipkan user ke koleksi MongoDB
@@ -146,7 +145,7 @@ func InsertUser(connection *mongo.Database, w http.ResponseWriter, c *http.Reque
 		"username":   username,
 		"password":   hashedPassword,
 		"keyz":       keyz,
-		"created_at": time.Now(),
+		"created_at": time.Now().In(config.Timezone),
 	}
 
 	// Insert data ke MongoDB
@@ -160,7 +159,6 @@ func InsertUser(connection *mongo.Database, w http.ResponseWriter, c *http.Reque
 	}
 
 	utils.Response(w, http.StatusOK, "User inserted successfully!", nil, nil)
-	return
 }
 
 func GetData(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
@@ -197,5 +195,4 @@ func GetData(connection *mongo.Database, w http.ResponseWriter, c *http.Request)
 			"foto":     foto,
 		},
 	})
-	return
 }

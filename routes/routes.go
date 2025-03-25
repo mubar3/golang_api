@@ -1,11 +1,13 @@
 package routes
 
 import (
+	"fmt"
 	"golang_api/controller"
-	"log"
+	"golang_api/utils"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -58,19 +60,24 @@ func SetupRoutes(client *mongo.Client) http.Handler {
 
 	AddRoute(router, http.MethodPost, "/login", func(w http.ResponseWriter, r *http.Request) {
 		controller.Login(connection, w, r)
-	})
+	}, true)
 	AddRoute(router, http.MethodPost, "/insert-user", func(w http.ResponseWriter, r *http.Request) {
 		controller.InsertUser(connection, w, r)
-	})
+	}, true)
 	AddRoute(router, http.MethodPost, "/change-password", func(w http.ResponseWriter, r *http.Request) {
 		controller.ChangePassword(connection, w, r)
-	})
+	}, true)
 	AddRoute(router, http.MethodPost, "/get-data", func(w http.ResponseWriter, r *http.Request) {
 		controller.GetData(connection, w, r)
-	})
+	}, true)
+
 	AddRoute(router, http.MethodPost, "/upload-img", func(w http.ResponseWriter, r *http.Request) {
 		controller.UploadImg(connection, w, r)
-	})
+	}, true)
+
+	AddRoute(router, http.MethodPost, "/visit-in", func(w http.ResponseWriter, r *http.Request) {
+		controller.VisitIn(connection, w, r)
+	}, true)
 
 	return router
 }
@@ -92,16 +99,43 @@ func StaticFileHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-func AddRoute(mux *http.ServeMux, method, path string, handlerFunc http.HandlerFunc) {
-	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == method {
-			handlerFunc(w, r)
-		} else {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})
-}
+var (
+	waiting sync.Map
+)
 
-func logRequest(r *http.Request) {
-	log.Printf("%s %s %s from %s\n", r.Method, r.URL.Path, r.Proto, r.RemoteAddr)
+func AddRoute(mux *http.ServeMux, method, path string, handlerFunc http.HandlerFunc, waitingroom bool) {
+	if waitingroom {
+		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == method {
+				// buat waitingroom ketika request sama
+
+				// Cek apakah ada permintaan yang sedang diproses
+				key := fmt.Sprintf("%s_%s", r.Header.Get("device_id"), r.URL.Path)
+				if _, found := waiting.Load(key); found {
+					utils.Logger.LogMessage("WARNING", "Request is pending"+r.URL.Path)
+					http.Error(w, "Request is pending", http.StatusTooManyRequests)
+					return
+				}
+
+				// Tandai permintaan sebagai sedang diproses
+				waiting.Store(key, true)
+
+				// Pastikan untuk menghapus status setelah selesai
+				defer waiting.Delete(key)
+
+				// Panggil handlerFunc untuk memproses permintaan
+				handlerFunc(w, r)
+			} else {
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})
+	} else {
+		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == method {
+				handlerFunc(w, r)
+			} else {
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			}
+		})
+	}
 }

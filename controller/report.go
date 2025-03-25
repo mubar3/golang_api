@@ -48,5 +48,4 @@ func UploadImg(connection *mongo.Database, w http.ResponseWriter, c *http.Reques
 	utils.Response(w, http.StatusOK, "Upload berhasil!", user_mobile.Id, map[string]interface{}{
 		"filename": path,
 	})
-	return
 }
