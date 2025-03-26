@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"time"
@@ -27,17 +28,21 @@ type User_mobile struct {
 
 // Fungsi Login
 func Login(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
+	// decode body json
+	var request map[string]interface{}
+	json.NewDecoder(c.Body).Decode(&request)
+
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"username": c.PostFormValue("username"),
-		"password": c.PostFormValue("password"),
+		"username": request["username"],
+		"password": request["password"],
 	})
 	if !status {
 		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
 		return
 	}
 
-	username := c.PostFormValue("username")
-	password := c.PostFormValue("password")
+	username := request["username"]
+	password := request["password"].(string)
 
 	// cek db
 	collection := connection.Collection("user_mobile")
