@@ -82,9 +82,13 @@ func Login(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
 }
 
 func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
+	// decode body json
+	var request map[string]interface{}
+	json.NewDecoder(c.Body).Decode(&request)
+
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session":  c.PostFormValue("session_id"),
-		"password": c.PostFormValue("password"),
+		"session":  request["session_id"],
+		"password": request["password"],
 	})
 	if !status {
 		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
@@ -94,7 +98,7 @@ func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.R
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostFormValue("session_id")}
+	filter := bson.M{"session_id": request["session_id"]}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)
@@ -102,7 +106,7 @@ func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.R
 	}
 
 	// Hash password
-	password := utils.HashPassword(c.PostFormValue("password"), user_mobile.Keyz)
+	password := utils.HashPassword(request["password"].(string), user_mobile.Keyz)
 	if password == user_mobile.Password {
 		utils.Response(w, http.StatusBadRequest, "Password tidak boleh sama dengan password yang lama", user_mobile.Id, nil)
 		return
@@ -126,13 +130,17 @@ func ChangePassword(connection *mongo.Database, w http.ResponseWriter, c *http.R
 
 // Fungsi untuk menyisipkan user ke koleksi MongoDB
 func InsertUser(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
-	username := c.PostFormValue("username")
-	password := c.PostFormValue("password")
+	// decode body json
+	var request map[string]interface{}
+	json.NewDecoder(c.Body).Decode(&request)
+
+	username := request["username"]
+	password := request["password"].(string)
 	keyz := "265"
 
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"username": c.PostFormValue("username"),
-		"password": c.PostFormValue("password"),
+		"username": request["username"],
+		"password": request["password"],
 	})
 	if !status {
 		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
@@ -167,8 +175,12 @@ func InsertUser(connection *mongo.Database, w http.ResponseWriter, c *http.Reque
 }
 
 func GetData(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
+	// decode body json
+	var request map[string]interface{}
+	json.NewDecoder(c.Body).Decode(&request)
+
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session": c.PostFormValue("session_id"),
+		"session": request["session_id"],
 	})
 	if !status {
 		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
@@ -178,7 +190,7 @@ func GetData(connection *mongo.Database, w http.ResponseWriter, c *http.Request)
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostFormValue("session_id")}
+	filter := bson.M{"session_id": request["session_id"]}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)

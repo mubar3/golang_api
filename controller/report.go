@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"golang_api/utils"
 	"net/http"
 
@@ -10,9 +11,16 @@ import (
 )
 
 func UploadImg(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
+	// decode body json
+	var request map[string]interface{}
+	json.NewDecoder(c.Body).Decode(&request)
+
+	session_id := request["session_id"]
+	foto := request["foto"].(string)
+
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session": c.PostFormValue("session_id"),
-		"foto":    c.PostFormValue("foto"),
+		"session": session_id,
+		"foto":    foto,
 	})
 	if !status {
 		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
@@ -22,7 +30,7 @@ func UploadImg(connection *mongo.Database, w http.ResponseWriter, c *http.Reques
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostFormValue("session_id")}
+	filter := bson.M{"session_id": session_id}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)
@@ -30,7 +38,7 @@ func UploadImg(connection *mongo.Database, w http.ResponseWriter, c *http.Reques
 	}
 
 	// cek foto base64
-	if !utils.IsBase64ImageValid(c.PostFormValue("foto")) {
+	if !utils.IsBase64ImageValid(foto) {
 		utils.Response(w, http.StatusBadRequest, "Foto tidak valid", user_mobile.Id, nil)
 		return
 	}
@@ -39,7 +47,7 @@ func UploadImg(connection *mongo.Database, w http.ResponseWriter, c *http.Reques
 	utils.Logger.WithField("user_mobile", user_mobile.Id).LogMessage("LOG", "Accessing API endpoint /upload-img")
 
 	// Dekode, kompres, dan simpan gambar
-	path, err := utils.DecodeAndCompressBase64Image(c.PostFormValue("foto"), "./asset")
+	path, err := utils.DecodeAndCompressBase64Image(foto, "./asset")
 	if err != nil {
 		utils.Response(w, http.StatusInternalServerError, err.Error(), user_mobile.Id, nil)
 		return

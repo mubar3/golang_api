@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"golang_api/config"
 	"golang_api/utils"
 	"net/http"
@@ -21,9 +22,16 @@ type Visit struct {
 }
 
 func VisitIn(connection *mongo.Database, w http.ResponseWriter, c *http.Request) {
+	// decode body json
+	var request map[string]interface{}
+	json.NewDecoder(c.Body).Decode(&request)
+
+	session_id := request["session_id"]
+	foto := request["foto"].(string)
+
 	status, eror := utils.NullValidation(map[string]interface{}{
-		"session": c.PostFormValue("session_id"),
-		"foto":    c.PostFormValue("foto"),
+		"session": session_id,
+		"foto":    foto,
 	})
 	if !status {
 		utils.Response(w, http.StatusBadRequest, eror, nil, nil)
@@ -33,7 +41,7 @@ func VisitIn(connection *mongo.Database, w http.ResponseWriter, c *http.Request)
 	// cek db
 	collection := connection.Collection("user_mobile")
 	var user_mobile User_mobile
-	filter := bson.M{"session_id": c.PostFormValue("session_id")}
+	filter := bson.M{"session_id": session_id}
 	err := collection.FindOne(context.TODO(), filter).Decode(&user_mobile)
 	if err != nil {
 		utils.Response(w, http.StatusBadRequest, "Session tidak tersedia", nil, nil)
@@ -49,7 +57,7 @@ func VisitIn(connection *mongo.Database, w http.ResponseWriter, c *http.Request)
 	// Data user yang akan disimpan
 	visit := bson.M{
 		"user":         user_mobile.Id,
-		"foto":         c.PostFormValue("foto"),
+		"foto":         foto,
 		"time_checkin": time.Now().In(config.Timezone),
 		"created_at":   time.Now().In(config.Timezone),
 	}
